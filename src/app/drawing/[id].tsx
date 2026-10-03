@@ -1,0 +1,143 @@
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ReplayCanvas } from '@/components/ReplayCanvas';
+import { Palette, Spacing } from '@/constants/theme';
+import { drawingRepository } from '@/storage/drawingRepository';
+import type { Drawing } from '@/types/drawing';
+
+function formatDuration(ms: number): string {
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function formatDate(createdAt: number): string {
+  return new Date(createdAt).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+export default function DrawingDetailScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const [drawing, setDrawing] = useState<Drawing | null>(null);
+  const [missing, setMissing] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      if (typeof id !== 'string') return;
+      const found = await drawingRepository.getDrawing(id);
+      if (!live) return;
+      if (!found) setMissing(true);
+      else setDrawing(found);
+    })();
+    return () => {
+      live = false;
+    };
+  }, [id]);
+
+  const remove = () => {
+    if (!drawing) return;
+    Alert.alert('Delete drawing?', 'This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          void (async () => {
+            await drawingRepository.deleteDrawing(drawing.id);
+            router.replace('/history');
+          })();
+        },
+      },
+    ]);
+  };
+
+  const pointCount = drawing?.strokes.reduce((n, s) => n + s.points.length, 0) ?? 0;
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel="Go back">
+          <Text style={styles.nav}>←</Text>
+        </Pressable>
+        <Text style={styles.title}>{drawing ? formatDate(drawing.createdAt) : ''}</Text>
+        <Pressable onPress={remove} hitSlop={12} accessibilityLabel="Delete drawing">
+          <Text style={[styles.nav, styles.delete]}>Delete</Text>
+        </Pressable>
+      </View>
+
+      {missing ? (
+        <View style={styles.center}>
+          <Text style={styles.muted}>This drawing no longer exists.</Text>
+        </View>
+      ) : !drawing ? (
+        <View style={styles.center}>
+          <Text style={styles.muted}>Loading…</Text>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+          <View style={styles.stage}>
+            <ReplayCanvas key={drawing.id} drawing={drawing} />
+          </View>
+          <View style={styles.meta}>
+            <Meta label="Strokes" value={String(drawing.strokes.length)} />
+            <Meta label="Points" value={String(pointCount)} />
+            <Meta label="Time" value={formatDuration(drawing.durationMs)} />
+            <Meta label="Canvas" value={`${drawing.width}×${drawing.height}`} />
+          </View>
+        </ScrollView>
+      )}
+    </SafeAreaView>
+  );
+}
+
+function Meta({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.metaItem}>
+      <Text style={styles.metaValue}>{value}</Text>
+      <Text style={styles.metaLabel}>{label}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: Palette.paper },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+  },
+  nav: { fontSize: 17, fontWeight: '600', color: Palette.ink, minWidth: 64 },
+  delete: { color: Palette.accent, textAlign: 'right' },
+  title: { fontSize: 15, fontWeight: '600', color: Palette.secondary },
+  container: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl, gap: Spacing.lg, flexGrow: 1 },
+  stage: {
+    minHeight: 420,
+    flexGrow: 1,
+    borderWidth: 1,
+    borderColor: Palette.line,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: Palette.paper,
+    padding: Spacing.md,
+  },
+  meta: { flexDirection: 'row', gap: Spacing.lg },
+  metaItem: { gap: 2 },
+  metaValue: { fontSize: 17, fontWeight: '700', color: Palette.ink },
+  metaLabel: {
+    fontSize: 11,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    color: Palette.secondary,
+    fontWeight: '600',
+  },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  muted: { color: Palette.secondary, fontSize: 15 },
+});
