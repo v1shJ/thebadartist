@@ -3,9 +3,10 @@ import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { GalleryCell } from '@/components/GalleryCell';
-import { GameButton } from '@/components/GameButton';
-import { Palette, Spacing } from '@/constants/theme';
+import { AppleButton } from '@/components/AppleButton';
+import { GalleryCell, useGalleryMetrics } from '@/components/GalleryCell';
+import { HeaderLinkStyle, ScreenHeader } from '@/components/ScreenHeader';
+import { Palette, Spacing, TypeStyles } from '@/constants/theme';
 import { drawingRepository } from '@/storage/drawingRepository';
 import type { Drawing } from '@/types/drawing';
 
@@ -21,6 +22,7 @@ function dayLabel(createdAt: number): string {
 
 export default function HistoryScreen() {
   const [drawings, setDrawings] = useState<Drawing[]>([]);
+  const { tileW } = useGalleryMetrics();
 
   useFocusEffect(
     useCallback(() => {
@@ -49,37 +51,36 @@ export default function HistoryScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel="Go back">
-          <Text style={styles.nav}>←</Text>
-        </Pressable>
-        <Text style={styles.title}>
-          Gallery{drawings.length > 0 ? ` · ${drawings.length}` : ''}
-        </Text>
-        <View style={styles.spacer} />
-      </View>
+      <ScreenHeader
+        title={`Gallery${drawings.length > 0 ? ` · ${drawings.length}` : ''}`}
+        left={
+          <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel="Go back">
+            <Text style={HeaderLinkStyle.link}>‹ Back</Text>
+          </Pressable>
+        }
+      />
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {sections.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>No disasters yet.</Text>
-            <Text style={styles.emptyText}>Every masterpiece starts with a bad first sketch.</Text>
+            <Text style={[TypeStyles.title, styles.emptyTitle]}>No drawings yet.</Text>
+            <Text style={[TypeStyles.body, styles.emptyText]}>
+              Every masterpiece starts with a bad first sketch.
+            </Text>
             <Link href="/pick" asChild>
-              <GameButton variant="accent" accessibilityLabel="Draw your first">
-                Draw your first →
-              </GameButton>
+              <AppleButton accessibilityLabel="Draw your first">Draw your first</AppleButton>
             </Link>
           </View>
         ) : (
           sections.map(([label, items]) => (
             <View key={label} style={styles.section}>
-              <Text style={styles.sectionTitle}>{label}</Text>
+              <Text style={[TypeStyles.captionStrong, styles.sectionTitle]}>{label}</Text>
               <View style={styles.grid}>
                 {items.map((d) => (
                   <Link
                     key={d.id}
                     href={{ pathname: '/drawing/[id]', params: { id: d.id } }}
                     asChild>
-                    <Pressable style={({ pressed }) => [styles.tile, pressed && styles.pressed]}>
+                    <Pressable style={({ pressed }) => [{ width: tileW }, pressed && styles.pressed]}>
                       <GalleryCell drawing={d} />
                     </Pressable>
                   </Link>
@@ -94,30 +95,13 @@ export default function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Palette.paper },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-  },
-  nav: { fontSize: 20, fontWeight: '800', color: Palette.ink, minWidth: 56 },
-  spacer: { minWidth: 56 },
-  title: { fontSize: 17, fontWeight: '800', color: Palette.ink },
-  container: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl, gap: Spacing.xl },
-  section: { gap: Spacing.md },
-  sectionTitle: {
-    fontSize: 12,
-    letterSpacing: 2.5,
-    textTransform: 'uppercase',
-    color: Palette.accent,
-    fontWeight: '800',
-  },
+  safe: { flex: 1, backgroundColor: Palette.canvas },
+  container: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.xxl, gap: Spacing.xl },
+  section: { gap: Spacing.sm },
+  sectionTitle: { color: Palette.secondary, textTransform: 'uppercase', letterSpacing: 0.5 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
-  tile: { width: '47%', borderRadius: 14 },
-  pressed: { opacity: 0.75 },
-  empty: { paddingTop: Spacing.xxl, gap: Spacing.md },
-  emptyTitle: { fontSize: 28, fontWeight: '900', color: Palette.ink },
-  emptyText: { fontSize: 16, color: Palette.secondary },
+  pressed: { opacity: 0.6 },
+  empty: { paddingTop: Spacing.xxl, gap: Spacing.sm, alignItems: 'flex-start' },
+  emptyTitle: { color: Palette.ink },
+  emptyText: { color: Palette.secondary, marginBottom: Spacing.md },
 });

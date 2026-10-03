@@ -36,15 +36,26 @@ export function contentBBox(drawing: Drawing, padRatio = 0.12): ViewBox | null {
 }
 
 /** ViewBox for framing: content bbox when possible, full canvas otherwise. */
-export function frameViewBox(drawing: Drawing): ViewBox {
-  return (
-    contentBBox(drawing) ?? {
-      x: 0,
-      y: 0,
-      w: Math.max(1, drawing.width),
-      h: Math.max(1, drawing.height),
-    }
-  );
+export function frameViewBox(drawing: Drawing, minFraction = 0.5): ViewBox {
+  const fullW = Math.max(1, drawing.width);
+  const fullH = Math.max(1, drawing.height);
+  const box = contentBBox(drawing);
+  if (!box) return { x: 0, y: 0, w: fullW, h: fullH };
+
+  // Never zoom tighter than minFraction of the canvas's largest side —
+  // a tiny doodle must stay recognizable, not fill the frame as a giant
+  // cropped corner. Caps zoom at ~1/minFraction.
+  const minDim = Math.max(fullW, fullH) * minFraction;
+  let w = Math.max(box.w, minDim);
+  let h = Math.max(box.h, minDim);
+  if (w > fullW) w = fullW;
+  if (h > fullH) h = fullH;
+
+  const cx = box.x + box.w / 2;
+  const cy = box.y + box.h / 2;
+  const x = Math.min(Math.max(0, cx - w / 2), Math.max(0, fullW - w));
+  const y = Math.min(Math.max(0, cy - h / 2), Math.max(0, fullH - h));
+  return { x, y, w, h };
 }
 
 export function viewBoxString(vb: ViewBox): string {

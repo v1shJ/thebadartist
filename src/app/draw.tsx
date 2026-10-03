@@ -1,11 +1,13 @@
+import { BlurView } from 'expo-blur';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppleButton } from '@/components/AppleButton';
 import { DrawingCanvas } from '@/components/DrawingCanvas';
-import { GameButton } from '@/components/GameButton';
-import { Palette, Spacing } from '@/constants/theme';
+import { HeaderLinkStyle } from '@/components/ScreenHeader';
+import { Palette, Radius, Spacing, TypeStyles } from '@/constants/theme';
 import { createDrawing } from '@/drawing/factory';
 import { challengeTitle, isPromptLabel, pickReplacement, type PromptLabel } from '@/game/prompts';
 import { useDrawingEngine } from '@/hooks/useDrawingEngine';
@@ -77,20 +79,17 @@ export default function DrawScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.topBar}>
         <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel="Go back">
-          <Text style={styles.nav}>←</Text>
+          <Text style={HeaderLinkStyle.link}>‹ Back</Text>
         </Pressable>
         <Pressable onPress={confirmClear} hitSlop={12} accessibilityLabel="Clear canvas">
-          <Text style={[styles.nav, styles.clear]}>Clear</Text>
+          <Text style={HeaderLinkStyle.link}>Clear</Text>
         </Pressable>
       </View>
 
       <View style={styles.challenge}>
-        <View style={styles.challengeText}>
-          <Text style={styles.kicker}>Your challenge</Text>
-          <Text style={styles.title}>{challengeTitle(prompt)}</Text>
-        </View>
+        <Text style={[TypeStyles.title, styles.title]}>{challengeTitle(prompt)}</Text>
         <Pressable onPress={swapPrompt} hitSlop={12} accessibilityLabel="Get a different prompt">
-          <Text style={styles.swap}>↻ New</Text>
+          <Text style={styles.swap}>New prompt</Text>
         </Pressable>
       </View>
 
@@ -106,17 +105,16 @@ export default function DrawScreen() {
         />
       </View>
 
-      <View style={styles.bottomBar}>
-        <GameButton
-          variant="outline"
+      <BlurView intensity={80} tint="light" style={styles.bar}>
+        <AppleButton
+          variant="ghost"
           onPress={engine.undo}
           disabled={!engine.canUndo}
           accessibilityLabel="Undo last stroke"
           style={styles.undo}>
           Undo
-        </GameButton>
-        <GameButton
-          variant="accent"
+        </AppleButton>
+        <AppleButton
           onPress={() => void finish()}
           disabled={engine.isEmpty || saving}
           accessibilityLabel="Finish drawing"
@@ -125,59 +123,53 @@ export default function DrawScreen() {
             ? 'Saving…'
             : engine.strokeCount === 0
               ? 'Finish'
-              : `Finish · ${engine.strokeCount} stroke${engine.strokeCount === 1 ? '' : 's'}`}
-        </GameButton>
-      </View>
+              : `Finish · ${engine.strokeCount}`}
+        </AppleButton>
+      </BlurView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Palette.paper },
+  safe: { flex: 1, backgroundColor: Palette.parchment },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
+    paddingVertical: Spacing.sm,
   },
-  nav: { fontSize: 17, fontWeight: '700', color: Palette.ink, minWidth: 56 },
-  clear: { textAlign: 'right' },
   challenge: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.sm,
+    paddingTop: Spacing.xs,
     paddingBottom: Spacing.md,
-    gap: Spacing.md,
+    gap: 2,
   },
-  challengeText: { flex: 1, gap: 2 },
-  kicker: {
-    fontSize: 11,
-    letterSpacing: 2.5,
-    textTransform: 'uppercase',
-    color: Palette.accent,
-    fontWeight: '800',
+  title: { color: Palette.ink },
+  swap: {
+    color: Palette.primary,
+    fontSize: 14,
+    fontWeight: '400',
+    letterSpacing: -0.22,
   },
-  title: { fontSize: 30, fontWeight: '900', color: Palette.ink },
-  swap: { fontSize: 15, fontWeight: '700', color: Palette.ink, paddingBottom: 4 },
   stage: {
     flex: 1,
     marginHorizontal: Spacing.lg,
-    borderWidth: 2,
-    borderColor: Palette.ink,
-    borderRadius: 14,
+    backgroundColor: Palette.canvas,
+    borderWidth: 1,
+    borderColor: Palette.hairline,
+    borderRadius: Radius.lg,
     overflow: 'hidden',
-    backgroundColor: Palette.paper,
   },
-  bottomBar: {
+  bar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.md,
+    gap: Spacing.sm,
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.md,
+    paddingVertical: Spacing.sm,
+    marginTop: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: Palette.hairline,
   },
   undo: { flex: 1 },
   finish: { flex: 2 },

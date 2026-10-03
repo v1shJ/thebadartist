@@ -4,12 +4,17 @@ import Svg, { Path } from 'react-native-svg';
 
 import { frameStrokeWidth, frameViewBox, viewBoxString } from '@/drawing/bbox';
 import { pointsToSmoothPath } from '@/drawing/paths';
+import { Palette, Radius, Spacing } from '@/constants/theme';
 import type { Drawing } from '@/types/drawing';
 
 type Props = {
   drawing: Drawing;
   ink?: string;
   autoPlay?: boolean;
+  /** Dark tiles use white ink and sky-blue progress. */
+  tone?: 'light' | 'dark';
+  /** Explicit pixel size — same rationale as DrawingPreview's `size`. */
+  size?: { width: number; height: number };
 };
 
 /**
@@ -20,7 +25,11 @@ type Props = {
  * the time they originally took. Remount (via key) to replay a
  * different drawing.
  */
-export function ReplayCanvas({ drawing, ink = '#171717', autoPlay = true }: Props) {
+export function ReplayCanvas({ drawing, ink, autoPlay = true, tone = 'light', size }: Props) {
+  const stroke = ink ?? (tone === 'dark' ? Palette.onDark : Palette.ink);
+  const trackActive = tone === 'dark' ? Palette.primaryOnDark : Palette.primary;
+  const trackEmpty = tone === 'dark' ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.08)';
+  const controlColor = tone === 'dark' ? Palette.onDark : Palette.primary;
   const timeline = useMemo(() => {
     const strokes = drawing.strokes;
     if (strokes.length === 0) return { total: 1, segments: [] as Segment[] };
@@ -103,14 +112,14 @@ export function ReplayCanvas({ drawing, ink = '#171717', autoPlay = true }: Prop
       <View style={styles.stage}>
         <Svg
           viewBox={frame.vb}
-          width="100%"
-          height="100%"
+          width={size?.width ?? '100%'}
+          height={size?.height ?? '100%'}
           preserveAspectRatio="xMidYMid meet">
           {visible.map((p) => (
             <Path
               key={p.id}
               d={p.d}
-              stroke={ink}
+              stroke={stroke}
               strokeWidth={frame.strokeWidth}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -121,15 +130,15 @@ export function ReplayCanvas({ drawing, ink = '#171717', autoPlay = true }: Prop
       </View>
       <View style={styles.controls}>
         <View style={styles.track}>
-          <View style={[styles.fill, { flex: progress }]} />
-          <View style={[styles.empty, { flex: Math.max(0, 1 - progress) }]} />
+          <View style={[styles.fill, { flex: progress, backgroundColor: trackActive }]} />
+          <View style={[styles.empty, { flex: Math.max(0, 1 - progress), backgroundColor: trackEmpty }]} />
         </View>
         <View style={styles.buttons}>
           <Pressable onPress={play} style={styles.btn} accessibilityLabel="Play replay">
-            <Text style={styles.btnText}>{progress >= 1 ? '↺ Replay' : playing ? '❚❚' : '▶ Play'}</Text>
+            <Text style={[styles.btnText, { color: controlColor }]}>{progress >= 1 ? '↺ Replay' : playing ? '❚❚ Pause' : '▶ Play'}</Text>
           </Pressable>
           <Pressable onPress={restart} style={styles.btn} accessibilityLabel="Restart replay">
-            <Text style={styles.btnText}>Restart</Text>
+            <Text style={[styles.btnText, { color: controlColor }]}>Restart</Text>
           </Pressable>
         </View>
       </View>
@@ -147,11 +156,11 @@ type Segment = {
 const styles = StyleSheet.create({
   wrap: { flex: 1 },
   stage: { flex: 1 },
-  controls: { paddingTop: 12, gap: 10 },
-  track: { flexDirection: 'row', height: 3, borderRadius: 2, overflow: 'hidden' },
-  fill: { backgroundColor: '#FF5A36' },
-  empty: { backgroundColor: '#E4E2DB' },
-  buttons: { flexDirection: 'row', gap: 12 },
-  btn: { paddingVertical: 8, paddingHorizontal: 4 },
-  btnText: { fontSize: 14, fontWeight: '600', color: '#171717' },
+  controls: { paddingTop: Spacing.sm, gap: Spacing.xs },
+  track: { flexDirection: 'row', height: 3, borderRadius: Radius.pill, overflow: 'hidden' },
+  fill: {},
+  empty: {},
+  buttons: { flexDirection: 'row', gap: Spacing.lg },
+  btn: { paddingVertical: Spacing.xs, paddingHorizontal: 2 },
+  btnText: { fontSize: 14, fontWeight: '400', letterSpacing: -0.22 },
 });

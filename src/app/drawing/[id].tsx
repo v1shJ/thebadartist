@@ -1,10 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ReplayCanvas } from '@/components/ReplayCanvas';
-import { Palette, Spacing } from '@/constants/theme';
+import { Palette, Spacing, TypeStyles } from '@/constants/theme';
 import { drawingRepository } from '@/storage/drawingRepository';
 import type { Drawing } from '@/types/drawing';
 
@@ -23,15 +23,14 @@ function formatDate(createdAt: number): string {
 
 function displayPrompt(drawing: Drawing): string {
   if (!drawing.prompt) return 'Free sketch';
-  return `A ${drawing.prompt.charAt(0).toUpperCase() + drawing.prompt.slice(1)}`;
+  return drawing.prompt.charAt(0).toUpperCase() + drawing.prompt.slice(1);
 }
-
-const REPLAY_MAX_HEIGHT = 560;
 
 export default function DrawingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [drawing, setDrawing] = useState<Drawing | null>(null);
   const [missing, setMissing] = useState(false);
+  const windowWidth = useWindowDimensions().width;
 
   useEffect(() => {
     let live = true;
@@ -67,46 +66,60 @@ export default function DrawingDetailScreen() {
 
   const pointCount = drawing?.strokes.reduce((n, s) => n + s.points.length, 0) ?? 0;
 
+  // Explicit stage size: the container is padded 24px on each side and
+  // the replay keeps the canvas aspect, capped at 560px tall.
+  const stageW = Math.max(1, windowWidth - Spacing.lg * 2);
+  const stageH = drawing
+    ? Math.min(stageW / (Math.max(1, drawing.width) / Math.max(1, drawing.height)), 560)
+    : 0;
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel="Go back">
-          <Text style={styles.nav}>←</Text>
-        </Pressable>
-        <Text style={styles.date}>{drawing ? formatDate(drawing.createdAt) : ''}</Text>
-        <Pressable onPress={remove} hitSlop={12} accessibilityLabel="Delete drawing">
-          <Text style={[styles.nav, styles.delete]}>Delete</Text>
-        </Pressable>
-      </View>
-
       {missing ? (
         <View style={styles.center}>
-          <Text style={styles.muted}>This drawing no longer exists.</Text>
+          <Text style={[TypeStyles.body, styles.muted]}>This drawing no longer exists.</Text>
         </View>
       ) : !drawing ? (
         <View style={styles.center}>
-          <Text style={styles.muted}>Loading…</Text>
+          <Text style={[TypeStyles.body, styles.muted]}>Loading…</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-          <View style={styles.titleBlock}>
-            <Text style={styles.kicker}>You drew</Text>
-            <Text style={styles.title}>{displayPrompt(drawing)}</Text>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Dark exhibit tile */}
+          <View style={styles.exhibit}>
+            <View style={styles.exhibitBar}>
+              <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel="Go back">
+                <Text style={styles.backDark}>‹ Gallery</Text>
+              </Pressable>
+              <Pressable onPress={remove} hitSlop={12} accessibilityLabel="Delete drawing">
+                <Text style={styles.deleteDark}>Delete</Text>
+              </Pressable>
+            </View>
+            <Text style={[TypeStyles.caption, styles.exhibitKicker]}>
+              {formatDate(drawing.createdAt)}
+            </Text>
+            <Text style={[TypeStyles.display, styles.exhibitTitle]}>
+              {displayPrompt(drawing)}
+            </Text>
+            <View style={[styles.stage, { width: stageW, height: stageH }]}>
+              <ReplayCanvas
+                key={drawing.id}
+                drawing={drawing}
+                tone="dark"
+                size={{ width: stageW, height: stageH }}
+              />
+            </View>
           </View>
-          <View
-            style={[
-              styles.stage,
-              {
-                aspectRatio: Math.max(1, drawing.width) / Math.max(1, drawing.height),
-              },
-            ]}>
-            <ReplayCanvas key={drawing.id} drawing={drawing} />
-          </View>
-          <View style={styles.meta}>
-            <Meta label="Strokes" value={String(drawing.strokes.length)} />
-            <Meta label="Points" value={String(pointCount)} />
-            <Meta label="Time" value={formatDuration(drawing.durationMs)} />
-            <Meta label="Canvas" value={`${drawing.width}×${drawing.height}`} />
+
+          {/* Light spec tile */}
+          <View style={styles.specs}>
+            <Text style={[TypeStyles.headline, styles.specsTitle]}>How it happened.</Text>
+            <View style={styles.meta}>
+              <Meta label="Strokes" value={String(drawing.strokes.length)} />
+              <Meta label="Points" value={String(pointCount)} />
+              <Meta label="Time" value={formatDuration(drawing.durationMs)} />
+              <Meta label="Canvas" value={`${drawing.width}×${drawing.height}`} />
+            </View>
           </View>
         </ScrollView>
       )}
@@ -117,54 +130,45 @@ export default function DrawingDetailScreen() {
 function Meta({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.metaItem}>
-      <Text style={styles.metaValue}>{value}</Text>
-      <Text style={styles.metaLabel}>{label}</Text>
+      <Text style={[TypeStyles.bodyStrong, styles.metaValue]}>{value}</Text>
+      <Text style={[TypeStyles.caption, styles.metaLabel]}>{label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Palette.paper },
-  header: {
+  safe: { flex: 1, backgroundColor: Palette.tileDark1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  muted: { color: Palette.mutedLight },
+  exhibit: {
+    backgroundColor: Palette.tileDark1,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.xl,
+    gap: Spacing.xs,
+  },
+  exhibitBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingVertical: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  backDark: { color: Palette.primaryOnDark, fontSize: 17, fontWeight: '400', letterSpacing: -0.37 },
+  deleteDark: { color: Palette.mutedLight, fontSize: 14, fontWeight: '400', letterSpacing: -0.22 },
+  exhibitKicker: { color: Palette.mutedLight },
+  exhibitTitle: { color: Palette.onDark, marginBottom: Spacing.md },
+  stage: { maxHeight: 560 },
+  specs: {
+    backgroundColor: Palette.canvas,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.xxl,
+    gap: Spacing.md,
   },
-  nav: { fontSize: 17, fontWeight: '700', color: Palette.ink, minWidth: 64 },
-  delete: { color: Palette.accent, textAlign: 'right' },
-  date: { fontSize: 14, fontWeight: '600', color: Palette.secondary },
-  container: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl, gap: Spacing.md },
-  titleBlock: { gap: 2, paddingTop: Spacing.sm },
-  kicker: {
-    fontSize: 11,
-    letterSpacing: 2.5,
-    textTransform: 'uppercase',
-    color: Palette.accent,
-    fontWeight: '800',
-  },
-  title: { fontSize: 32, fontWeight: '900', color: Palette.ink },
-  stage: {
-    width: '100%',
-    maxHeight: REPLAY_MAX_HEIGHT,
-    borderWidth: 2,
-    borderColor: Palette.ink,
-    borderRadius: 14,
-    overflow: 'hidden',
-    backgroundColor: Palette.paper,
-    padding: Spacing.md,
-  },
-  meta: { flexDirection: 'row', gap: Spacing.lg, paddingTop: Spacing.sm },
-  metaItem: { gap: 2 },
-  metaValue: { fontSize: 17, fontWeight: '800', color: Palette.ink },
-  metaLabel: {
-    fontSize: 11,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    color: Palette.secondary,
-    fontWeight: '700',
-  },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  muted: { color: Palette.secondary, fontSize: 15 },
+  specsTitle: { color: Palette.ink },
+  meta: { flexDirection: 'row', gap: Spacing.xl, flexWrap: 'wrap' },
+  metaItem: { gap: 2, minWidth: 64 },
+  metaValue: { color: Palette.ink },
+  metaLabel: { color: Palette.secondary },
 });

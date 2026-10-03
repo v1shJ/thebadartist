@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { pointsToSmoothPath } from '@/drawing/paths';
+import { Palette } from '@/constants/theme';
 import type { Stroke } from '@/types/drawing';
 
 type Props = {
@@ -26,7 +27,7 @@ type Props = {
 export function DrawingCanvas({
   strokes,
   activeD,
-  ink = '#171717',
+  ink = Palette.ink,
   strokeWidth = 4,
   onBegin,
   onMove,
@@ -89,6 +90,6 @@ export function DrawingCanvas({
 const styles = StyleSheet.create({
   canvas: {
     flex: 1,
-    backgroundColor: '#F7F6F2',
+    backgroundColor: Palette.canvas,
   },
 });
