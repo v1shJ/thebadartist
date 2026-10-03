@@ -3,7 +3,8 @@ import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { DrawingPreview } from '@/components/DrawingPreview';
+import { GalleryCell } from '@/components/GalleryCell';
+import { GameButton } from '@/components/GameButton';
 import { Palette, Spacing } from '@/constants/theme';
 import { drawingRepository } from '@/storage/drawingRepository';
 import type { Drawing } from '@/types/drawing';
@@ -15,12 +16,13 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       let live = true;
-      void (async () => {
+      const load = async () => {
         const all = await drawingRepository.getDrawings();
         if (!live) return;
         setRecent(all.slice(0, 4));
         setTotal(all.length);
-      })();
+      };
+      void load();
       return () => {
         live = false;
       };
@@ -36,15 +38,17 @@ export default function HomeScreen() {
           <Text style={styles.tagline}>Can I figure out what you&apos;re drawing?</Text>
         </View>
 
-        <Link href="/draw" asChild>
-          <Pressable style={({ pressed }) => [styles.start, pressed && styles.pressed]}>
-            <Text style={styles.startText}>Start drawing</Text>
-            <Text style={styles.startArrow}>→</Text>
-          </Pressable>
+        <Link href="/pick" asChild>
+          <GameButton variant="accent" accessibilityLabel="Start drawing">
+            <View style={styles.startRow}>
+              <Text style={styles.startText}>Start drawing</Text>
+              <Text style={styles.startArrow}>→</Text>
+            </View>
+          </GameButton>
         </Link>
 
         <View style={styles.recentHeader}>
-          <Text style={styles.sectionTitle}>Recent</Text>
+          <Text style={styles.sectionTitle}>Fresh disasters</Text>
           {total > 0 && (
             <Link href="/history" asChild>
               <Pressable>
@@ -64,8 +68,8 @@ export default function HomeScreen() {
           <View style={styles.grid}>
             {recent.map((d) => (
               <Link key={d.id} href={{ pathname: '/drawing/[id]', params: { id: d.id } }} asChild>
-                <Pressable style={({ pressed }) => [styles.cell, pressed && styles.pressed]}>
-                  <DrawingPreview drawing={d} />
+                <Pressable style={({ pressed }) => [styles.tile, pressed && styles.pressed]}>
+                  <GalleryCell drawing={d} />
                 </Pressable>
               </Link>
             ))}
@@ -82,32 +86,21 @@ const styles = StyleSheet.create({
   masthead: { paddingTop: Spacing.xxl, gap: Spacing.sm },
   kicker: {
     fontSize: 12,
-    letterSpacing: 2,
+    letterSpacing: 2.5,
     textTransform: 'uppercase',
-    color: Palette.secondary,
-    fontWeight: '600',
-  },
-  title: {
-    fontSize: 64,
-    lineHeight: 60,
+    color: Palette.accent,
     fontWeight: '800',
-    color: Palette.ink,
-    fontFamily: 'System',
   },
+  title: { fontSize: 64, lineHeight: 60, fontWeight: '900', color: Palette.ink },
   tagline: { fontSize: 17, color: Palette.secondary, marginTop: Spacing.sm },
-  start: {
-    backgroundColor: Palette.ink,
-    borderRadius: 999,
-    paddingVertical: 18,
-    paddingHorizontal: 24,
+  startRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: Spacing.sm,
+    width: '100%',
   },
-  pressed: { opacity: 0.75 },
-  startText: { color: Palette.paper, fontSize: 17, fontWeight: '700' },
-  startArrow: { color: Palette.accent, fontSize: 20, fontWeight: '700' },
+  startText: { color: '#FFFFFF', fontSize: 18, fontWeight: '800' },
+  startArrow: { color: '#FFFFFF', fontSize: 22, fontWeight: '800' },
   recentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -116,28 +109,21 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 12,
-    letterSpacing: 2,
+    letterSpacing: 2.5,
     textTransform: 'uppercase',
     color: Palette.secondary,
-    fontWeight: '600',
+    fontWeight: '800',
   },
-  sectionLink: { fontSize: 14, color: Palette.ink, fontWeight: '600' },
+  sectionLink: { fontSize: 14, color: Palette.ink, fontWeight: '700' },
   empty: {
-    borderWidth: 1,
-    borderColor: Palette.line,
-    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Palette.ink,
+    borderRadius: 14,
     padding: Spacing.lg,
+    backgroundColor: Palette.card,
   },
   emptyText: { color: Palette.secondary, fontSize: 15 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
-  cell: {
-    width: '47%',
-    aspectRatio: 3 / 4,
-    backgroundColor: Palette.card,
-    borderWidth: 1,
-    borderColor: Palette.line,
-    borderRadius: 12,
-    overflow: 'hidden',
-    padding: 6,
-  },
+  tile: { width: '47%', borderRadius: 14 },
+  pressed: { opacity: 0.75 },
 });

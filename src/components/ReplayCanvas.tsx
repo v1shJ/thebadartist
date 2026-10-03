@@ -2,13 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
+import { frameStrokeWidth, frameViewBox, viewBoxString } from '@/drawing/bbox';
 import { pointsToSmoothPath } from '@/drawing/paths';
 import type { Drawing } from '@/types/drawing';
 
 type Props = {
   drawing: Drawing;
   ink?: string;
-  strokeWidth?: number;
   autoPlay?: boolean;
 };
 
@@ -20,7 +20,7 @@ type Props = {
  * the time they originally took. Remount (via key) to replay a
  * different drawing.
  */
-export function ReplayCanvas({ drawing, ink = '#171717', strokeWidth = 4, autoPlay = true }: Props) {
+export function ReplayCanvas({ drawing, ink = '#171717', autoPlay = true }: Props) {
   const timeline = useMemo(() => {
     const strokes = drawing.strokes;
     if (strokes.length === 0) return { total: 1, segments: [] as Segment[] };
@@ -79,8 +79,10 @@ export function ReplayCanvas({ drawing, ink = '#171717', strokeWidth = 4, autoPl
     [timeline, progress],
   );
 
-  const w = Math.max(1, drawing.width);
-  const h = Math.max(1, drawing.height);
+  const frame = useMemo(() => {
+    const box = frameViewBox(drawing);
+    return { vb: viewBoxString(box), strokeWidth: frameStrokeWidth(drawing, box) };
+  }, [drawing]);
 
   const play = () => {
     if (progressRef.current >= 1) {
@@ -100,15 +102,16 @@ export function ReplayCanvas({ drawing, ink = '#171717', strokeWidth = 4, autoPl
     <View style={styles.wrap}>
       <View style={styles.stage}>
         <Svg
-          viewBox={`0 0 ${w} ${h}`}
-          style={{ width: '100%', height: '100%' }}
+          viewBox={frame.vb}
+          width="100%"
+          height="100%"
           preserveAspectRatio="xMidYMid meet">
           {visible.map((p) => (
             <Path
               key={p.id}
               d={p.d}
               stroke={ink}
-              strokeWidth={strokeWidth * Math.max(w, h) * 0.006}
+              strokeWidth={frame.strokeWidth}
               strokeLinecap="round"
               strokeLinejoin="round"
               fill="none"

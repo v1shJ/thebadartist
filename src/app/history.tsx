@@ -3,7 +3,8 @@ import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { DrawingPreview } from '@/components/DrawingPreview';
+import { GalleryCell } from '@/components/GalleryCell';
+import { GameButton } from '@/components/GameButton';
 import { Palette, Spacing } from '@/constants/theme';
 import { drawingRepository } from '@/storage/drawingRepository';
 import type { Drawing } from '@/types/drawing';
@@ -24,10 +25,11 @@ export default function HistoryScreen() {
   useFocusEffect(
     useCallback(() => {
       let live = true;
-      void (async () => {
+      const load = async () => {
         const all = await drawingRepository.getDrawings();
         if (live) setDrawings(all);
-      })();
+      };
+      void load();
       return () => {
         live = false;
       };
@@ -51,17 +53,20 @@ export default function HistoryScreen() {
         <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel="Go back">
           <Text style={styles.nav}>←</Text>
         </Pressable>
-        <Text style={styles.title}>Drawings</Text>
+        <Text style={styles.title}>
+          Gallery{drawings.length > 0 ? ` · ${drawings.length}` : ''}
+        </Text>
         <View style={styles.spacer} />
       </View>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {sections.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>No drawings yet.</Text>
-            <Link href="/draw" asChild>
-              <Pressable style={styles.cta}>
-                <Text style={styles.ctaText}>Draw your first →</Text>
-              </Pressable>
+            <Text style={styles.emptyTitle}>No disasters yet.</Text>
+            <Text style={styles.emptyText}>Every masterpiece starts with a bad first sketch.</Text>
+            <Link href="/pick" asChild>
+              <GameButton variant="accent" accessibilityLabel="Draw your first">
+                Draw your first →
+              </GameButton>
             </Link>
           </View>
         ) : (
@@ -74,8 +79,8 @@ export default function HistoryScreen() {
                     key={d.id}
                     href={{ pathname: '/drawing/[id]', params: { id: d.id } }}
                     asChild>
-                    <Pressable style={({ pressed }) => [styles.cell, pressed && styles.pressed]}>
-                      <DrawingPreview drawing={d} />
+                    <Pressable style={({ pressed }) => [styles.tile, pressed && styles.pressed]}>
+                      <GalleryCell drawing={d} />
                     </Pressable>
                   </Link>
                 ))}
@@ -97,38 +102,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
   },
-  nav: { fontSize: 20, fontWeight: '600', color: Palette.ink, minWidth: 56 },
+  nav: { fontSize: 20, fontWeight: '800', color: Palette.ink, minWidth: 56 },
   spacer: { minWidth: 56 },
-  title: { fontSize: 17, fontWeight: '700', color: Palette.ink },
+  title: { fontSize: 17, fontWeight: '800', color: Palette.ink },
   container: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl, gap: Spacing.xl },
   section: { gap: Spacing.md },
   sectionTitle: {
     fontSize: 12,
-    letterSpacing: 2,
+    letterSpacing: 2.5,
     textTransform: 'uppercase',
-    color: Palette.secondary,
-    fontWeight: '600',
+    color: Palette.accent,
+    fontWeight: '800',
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
-  cell: {
-    width: '47%',
-    aspectRatio: 3 / 4,
-    backgroundColor: Palette.card,
-    borderWidth: 1,
-    borderColor: Palette.line,
-    borderRadius: 12,
-    overflow: 'hidden',
-    padding: 6,
-  },
-  pressed: { opacity: 0.7 },
+  tile: { width: '47%', borderRadius: 14 },
+  pressed: { opacity: 0.75 },
   empty: { paddingTop: Spacing.xxl, gap: Spacing.md },
-  emptyText: { fontSize: 17, color: Palette.secondary },
-  cta: {
-    backgroundColor: Palette.ink,
-    borderRadius: 999,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    alignSelf: 'flex-start',
-  },
-  ctaText: { color: Palette.paper, fontSize: 15, fontWeight: '700' },
+  emptyTitle: { fontSize: 28, fontWeight: '900', color: Palette.ink },
+  emptyText: { fontSize: 16, color: Palette.secondary },
 });

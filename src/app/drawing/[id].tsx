@@ -21,6 +21,13 @@ function formatDate(createdAt: number): string {
   });
 }
 
+function displayPrompt(drawing: Drawing): string {
+  if (!drawing.prompt) return 'Free sketch';
+  return `A ${drawing.prompt.charAt(0).toUpperCase() + drawing.prompt.slice(1)}`;
+}
+
+const REPLAY_MAX_HEIGHT = 560;
+
 export default function DrawingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [drawing, setDrawing] = useState<Drawing | null>(null);
@@ -28,13 +35,14 @@ export default function DrawingDetailScreen() {
 
   useEffect(() => {
     let live = true;
-    void (async () => {
+    const load = async () => {
       if (typeof id !== 'string') return;
       const found = await drawingRepository.getDrawing(id);
       if (!live) return;
       if (!found) setMissing(true);
       else setDrawing(found);
-    })();
+    };
+    void load();
     return () => {
       live = false;
     };
@@ -65,7 +73,7 @@ export default function DrawingDetailScreen() {
         <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel="Go back">
           <Text style={styles.nav}>←</Text>
         </Pressable>
-        <Text style={styles.title}>{drawing ? formatDate(drawing.createdAt) : ''}</Text>
+        <Text style={styles.date}>{drawing ? formatDate(drawing.createdAt) : ''}</Text>
         <Pressable onPress={remove} hitSlop={12} accessibilityLabel="Delete drawing">
           <Text style={[styles.nav, styles.delete]}>Delete</Text>
         </Pressable>
@@ -81,7 +89,17 @@ export default function DrawingDetailScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-          <View style={styles.stage}>
+          <View style={styles.titleBlock}>
+            <Text style={styles.kicker}>You drew</Text>
+            <Text style={styles.title}>{displayPrompt(drawing)}</Text>
+          </View>
+          <View
+            style={[
+              styles.stage,
+              {
+                aspectRatio: Math.max(1, drawing.width) / Math.max(1, drawing.height),
+              },
+            ]}>
             <ReplayCanvas key={drawing.id} drawing={drawing} />
           </View>
           <View style={styles.meta}>
@@ -114,29 +132,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
   },
-  nav: { fontSize: 17, fontWeight: '600', color: Palette.ink, minWidth: 64 },
+  nav: { fontSize: 17, fontWeight: '700', color: Palette.ink, minWidth: 64 },
   delete: { color: Palette.accent, textAlign: 'right' },
-  title: { fontSize: 15, fontWeight: '600', color: Palette.secondary },
-  container: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl, gap: Spacing.lg, flexGrow: 1 },
+  date: { fontSize: 14, fontWeight: '600', color: Palette.secondary },
+  container: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl, gap: Spacing.md },
+  titleBlock: { gap: 2, paddingTop: Spacing.sm },
+  kicker: {
+    fontSize: 11,
+    letterSpacing: 2.5,
+    textTransform: 'uppercase',
+    color: Palette.accent,
+    fontWeight: '800',
+  },
+  title: { fontSize: 32, fontWeight: '900', color: Palette.ink },
   stage: {
-    minHeight: 420,
-    flexGrow: 1,
-    borderWidth: 1,
-    borderColor: Palette.line,
-    borderRadius: 16,
+    width: '100%',
+    maxHeight: REPLAY_MAX_HEIGHT,
+    borderWidth: 2,
+    borderColor: Palette.ink,
+    borderRadius: 14,
     overflow: 'hidden',
     backgroundColor: Palette.paper,
     padding: Spacing.md,
   },
-  meta: { flexDirection: 'row', gap: Spacing.lg },
+  meta: { flexDirection: 'row', gap: Spacing.lg, paddingTop: Spacing.sm },
   metaItem: { gap: 2 },
-  metaValue: { fontSize: 17, fontWeight: '700', color: Palette.ink },
+  metaValue: { fontSize: 17, fontWeight: '800', color: Palette.ink },
   metaLabel: {
     fontSize: 11,
     letterSpacing: 1.5,
     textTransform: 'uppercase',
     color: Palette.secondary,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   muted: { color: Palette.secondary, fontSize: 15 },

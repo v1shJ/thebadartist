@@ -1,20 +1,51 @@
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DrawingCanvas } from '@/components/DrawingCanvas';
+import { GameButton } from '@/components/GameButton';
 import { Palette, Spacing } from '@/constants/theme';
 import { createDrawing } from '@/drawing/factory';
+import { challengeTitle, isPromptLabel, pickReplacement, type PromptLabel } from '@/game/prompts';
 import { useDrawingEngine } from '@/hooks/useDrawingEngine';
 import { drawingRepository } from '@/storage/drawingRepository';
 
 export default function DrawScreen() {
+  const { prompt: rawPrompt } = useLocalSearchParams<{ prompt?: string }>();
+  const initial: PromptLabel | null =
+    typeof rawPrompt === 'string' && isPromptLabel(rawPrompt) ? rawPrompt : null;
+  const [prompt, setPrompt] = useState<PromptLabel | null>(initial);
+
   const engine = useDrawingEngine();
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (initial === null) router.replace('/pick');
+  }, [initial]);
+
+  const swapPrompt = () => {
+    if (!prompt) return;
+    const next = pickReplacement(prompt);
+    if (engine.isEmpty) {
+      setPrompt(next);
+      return;
+    }
+    Alert.alert('Switch challenge?', `Your ${prompt} sketch will be cleared.`, [
+      { text: 'Keep drawing', style: 'cancel' },
+      {
+        text: 'Switch',
+        style: 'destructive',
+        onPress: () => {
+          engine.clear();
+          setPrompt(next);
+        },
+      },
+    ]);
+  };
+
   const finish = async () => {
-    if (engine.isEmpty || saving) return;
+    if (engine.isEmpty || saving || !prompt) return;
     if (engine.canvasSize.width === 0) return;
     setSaving(true);
     try {
@@ -23,6 +54,7 @@ export default function DrawScreen() {
         height: Math.round(engine.canvasSize.height),
         strokes: engine.strokes,
         sessionStartedAt: engine.getSessionStartedAt(),
+        prompt,
       });
       await drawingRepository.save(drawing);
       router.replace({ pathname: '/drawing/[id]', params: { id: drawing.id } });
@@ -39,17 +71,26 @@ export default function DrawScreen() {
     ]);
   };
 
+  if (!prompt) return null;
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.topBar}>
         <Pressable onPress={() => router.back()} hitSlop={12} accessibilityLabel="Go back">
           <Text style={styles.nav}>←</Text>
         </Pressable>
-        <Text style={styles.hint}>
-          {engine.strokeCount === 0 ? 'Draw something' : `${engine.strokeCount} stroke${engine.strokeCount === 1 ? '' : 's'}`}
-        </Text>
         <Pressable onPress={confirmClear} hitSlop={12} accessibilityLabel="Clear canvas">
           <Text style={[styles.nav, styles.clear]}>Clear</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.challenge}>
+        <View style={styles.challengeText}>
+          <Text style={styles.kicker}>Your challenge</Text>
+          <Text style={styles.title}>{challengeTitle(prompt)}</Text>
+        </View>
+        <Pressable onPress={swapPrompt} hitSlop={12} accessibilityLabel="Get a different prompt">
+          <Text style={styles.swap}>↻ New</Text>
         </Pressable>
       </View>
 
@@ -66,24 +107,26 @@ export default function DrawScreen() {
       </View>
 
       <View style={styles.bottomBar}>
-        <Pressable
+        <GameButton
+          variant="outline"
           onPress={engine.undo}
           disabled={!engine.canUndo}
-          hitSlop={12}
-          accessibilityLabel="Undo last stroke">
-          <Text style={[styles.action, !engine.canUndo && styles.disabled]}>Undo</Text>
-        </Pressable>
-        <Pressable
+          accessibilityLabel="Undo last stroke"
+          style={styles.undo}>
+          Undo
+        </GameButton>
+        <GameButton
+          variant="accent"
           onPress={() => void finish()}
           disabled={engine.isEmpty || saving}
-          style={({ pressed }) => [
-            styles.finish,
-            (engine.isEmpty || saving) && styles.finishDisabled,
-            pressed && !(engine.isEmpty || saving) && styles.pressed,
-          ]}
-          accessibilityLabel="Finish drawing">
-          <Text style={styles.finishText}>{saving ? 'Saving…' : 'Finish'}</Text>
-        </Pressable>
+          accessibilityLabel="Finish drawing"
+          style={styles.finish}>
+          {saving
+            ? 'Saving…'
+            : engine.strokeCount === 0
+              ? 'Finish'
+              : `Finish · ${engine.strokeCount} stroke${engine.strokeCount === 1 ? '' : 's'}`}
+        </GameButton>
       </View>
     </SafeAreaView>
   );
@@ -96,36 +139,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    paddingTop: Spacing.md,
   },
-  nav: { fontSize: 17, fontWeight: '600', color: Palette.ink, minWidth: 56 },
+  nav: { fontSize: 17, fontWeight: '700', color: Palette.ink, minWidth: 56 },
   clear: { textAlign: 'right' },
-  hint: { fontSize: 13, color: Palette.secondary, fontWeight: '500' },
+  challenge: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.md,
+    gap: Spacing.md,
+  },
+  challengeText: { flex: 1, gap: 2 },
+  kicker: {
+    fontSize: 11,
+    letterSpacing: 2.5,
+    textTransform: 'uppercase',
+    color: Palette.accent,
+    fontWeight: '800',
+  },
+  title: { fontSize: 30, fontWeight: '900', color: Palette.ink },
+  swap: { fontSize: 15, fontWeight: '700', color: Palette.ink, paddingBottom: 4 },
   stage: {
     flex: 1,
     marginHorizontal: Spacing.lg,
-    borderWidth: 1,
-    borderColor: Palette.line,
-    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: Palette.ink,
+    borderRadius: 14,
     overflow: 'hidden',
     backgroundColor: Palette.paper,
   },
   bottomBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: Spacing.md,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.md,
   },
-  action: { fontSize: 17, fontWeight: '600', color: Palette.ink, minWidth: 64 },
-  disabled: { color: Palette.line },
-  finish: {
-    backgroundColor: Palette.accent,
-    borderRadius: 999,
-    paddingVertical: 14,
-    paddingHorizontal: 40,
-  },
-  finishDisabled: { opacity: 0.35 },
-  pressed: { opacity: 0.85 },
-  finishText: { color: Palette.accentInk, fontSize: 17, fontWeight: '700' },
+  undo: { flex: 1 },
+  finish: { flex: 2 },
 });
