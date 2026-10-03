@@ -35,16 +35,32 @@ export function contentBBox(drawing: Drawing, padRatio = 0.12): ViewBox | null {
   };
 }
 
-/** ViewBox for framing: content bbox when possible, full canvas otherwise. */
-export function frameViewBox(drawing: Drawing): ViewBox {
-  return (
-    contentBBox(drawing) ?? {
-      x: 0,
-      y: 0,
-      w: Math.max(1, drawing.width),
-      h: Math.max(1, drawing.height),
-    }
-  );
+/**
+ * ViewBox for framing: content bbox when possible, full canvas otherwise.
+ *
+ * The frame never gets tighter than `minFraction` of the canvas's largest
+ * side (centered on the artwork, clamped to the canvas). Without this cap,
+ * a tiny doodle is scaled up ~10–20x and the tile shows one giant cropped
+ * corner instead of the drawing — while full-canvas framing makes the same
+ * doodle look like empty space. 0.5 caps zoom at ~2x, the middle ground.
+ */
+export function frameViewBox(drawing: Drawing, minFraction = 0.5): ViewBox {
+  const fullW = Math.max(1, drawing.width);
+  const fullH = Math.max(1, drawing.height);
+  const box = contentBBox(drawing);
+  if (!box) return { x: 0, y: 0, w: fullW, h: fullH };
+
+  const minDim = Math.max(fullW, fullH) * minFraction;
+  let w = Math.max(box.w, minDim);
+  let h = Math.max(box.h, minDim);
+  if (w > fullW) w = fullW;
+  if (h > fullH) h = fullH;
+
+  const cx = box.x + box.w / 2;
+  const cy = box.y + box.h / 2;
+  const x = Math.min(Math.max(0, cx - w / 2), Math.max(0, fullW - w));
+  const y = Math.min(Math.max(0, cy - h / 2), Math.max(0, fullH - h));
+  return { x, y, w, h };
 }
 
 export function viewBoxString(vb: ViewBox): string {

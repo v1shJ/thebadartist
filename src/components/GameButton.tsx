@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import { useState } from 'react';
+import { isValidElement, useState } from 'react';
 import {
   Animated,
   Pressable,
@@ -79,10 +79,12 @@ export function GameButton({
       />
       <Animated.View
         style={[styles.face, styles[variant], disabled && styles.disabled, { transform: [{ translateY: sink }] }]}>
-        {typeof children === 'string' ? (
-          <Text style={[styles.label, labelColor[variant]]}>{children}</Text>
-        ) : (
+        {isValidElement(children) ? (
           children
+        ) : (
+          // Strings, numbers, and mixes like `Label · {count}` must render
+          // inside <Text> — raw text directly under a View red-screens.
+          <Text style={[styles.label, labelColor[variant]]}>{children}</Text>
         )}
       </Animated.View>
     </Pressable>

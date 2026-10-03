@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { GalleryCell } from '@/components/GalleryCell';
+import { GalleryCell, useGalleryMetrics } from '@/components/GalleryCell';
 import { GameButton } from '@/components/GameButton';
 import { Palette, Spacing } from '@/constants/theme';
 import { drawingRepository } from '@/storage/drawingRepository';
@@ -12,6 +12,7 @@ import type { Drawing } from '@/types/drawing';
 export default function HomeScreen() {
   const [recent, setRecent] = useState<Drawing[]>([]);
   const [total, setTotal] = useState(0);
+  const { tileW } = useGalleryMetrics();
 
   useFocusEffect(
     useCallback(() => {
@@ -68,7 +69,7 @@ export default function HomeScreen() {
           <View style={styles.grid}>
             {recent.map((d) => (
               <Link key={d.id} href={{ pathname: '/drawing/[id]', params: { id: d.id } }} asChild>
-                <Pressable style={({ pressed }) => [styles.tile, pressed && styles.pressed]}>
+                <Pressable style={({ pressed }) => [{ width: tileW }, pressed && styles.pressed]}>
                   <GalleryCell drawing={d} />
                 </Pressable>
               </Link>
@@ -124,6 +125,5 @@ const styles = StyleSheet.create({
   },
   emptyText: { color: Palette.secondary, fontSize: 15 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
-  tile: { width: '47%', borderRadius: 14 },
   pressed: { opacity: 0.75 },
 });

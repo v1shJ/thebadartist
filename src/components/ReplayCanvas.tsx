@@ -10,6 +10,8 @@ type Props = {
   drawing: Drawing;
   ink?: string;
   autoPlay?: boolean;
+  /** Explicit pixel size — see DrawingPreview's `size` for why. */
+  size?: { width: number; height: number };
 };
 
 /**
@@ -20,7 +22,7 @@ type Props = {
  * the time they originally took. Remount (via key) to replay a
  * different drawing.
  */
-export function ReplayCanvas({ drawing, ink = '#171717', autoPlay = true }: Props) {
+export function ReplayCanvas({ drawing, ink = '#171717', autoPlay = true, size }: Props) {
   const timeline = useMemo(() => {
     const strokes = drawing.strokes;
     if (strokes.length === 0) return { total: 1, segments: [] as Segment[] };
@@ -103,8 +105,8 @@ export function ReplayCanvas({ drawing, ink = '#171717', autoPlay = true }: Prop
       <View style={styles.stage}>
         <Svg
           viewBox={frame.vb}
-          width="100%"
-          height="100%"
+          width={size?.width ?? '100%'}
+          height={size?.height ?? '100%'}
           preserveAspectRatio="xMidYMid meet">
           {visible.map((p) => (
             <Path

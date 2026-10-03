@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { DrawingPreview } from '@/components/DrawingPreview';
 import { Palette, Spacing } from '@/constants/theme';
@@ -10,14 +10,29 @@ function displayPrompt(drawing: Drawing): string {
 }
 
 /**
- * Gallery tile: bbox-cropped artwork over a caption bar naming the
+ * Grid metrics shared by every gallery (home + history grids both use
+ * paddingHorizontal lg with a md gap). Token-driven so the explicit
+ * pixel sizes always match the layout — screens use `tileW` for the
+ * wrapper, the cell uses `artPx` for the artwork.
+ */
+export function useGalleryMetrics() {
+  const windowWidth = useWindowDimensions().width;
+  const tileW = Math.floor((windowWidth - Spacing.lg * 2 - Spacing.md) / 2);
+  // Card border (2px × 2 sides); the artwork is otherwise full-bleed.
+  const artPx = Math.max(1, tileW - 4);
+  return { tileW, artPx };
+}
+
+/**
+ * Gallery tile: zoom-capped artwork over a caption bar naming the
  * prompt. The visual half of a Link+Pressable wrapper in each screen.
  */
 export function GalleryCell({ drawing }: { drawing: Drawing }) {
+  const { artPx } = useGalleryMetrics();
   return (
     <View style={styles.cell}>
-      <View style={styles.preview}>
-        <DrawingPreview drawing={drawing} />
+      <View style={[styles.preview, { width: artPx, height: artPx }]}>
+        <DrawingPreview drawing={drawing} size={artPx} />
       </View>
       <View style={styles.caption}>
         <Text style={styles.prompt} numberOfLines={1}>
@@ -40,7 +55,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   preview: {
-    aspectRatio: 1,
     backgroundColor: Palette.paper,
   },
   caption: {

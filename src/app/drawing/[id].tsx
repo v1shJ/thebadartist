@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ReplayCanvas } from '@/components/ReplayCanvas';
@@ -32,6 +32,7 @@ export default function DrawingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [drawing, setDrawing] = useState<Drawing | null>(null);
   const [missing, setMissing] = useState(false);
+  const windowWidth = useWindowDimensions().width;
 
   useEffect(() => {
     let live = true;
@@ -67,6 +68,14 @@ export default function DrawingDetailScreen() {
 
   const pointCount = drawing?.strokes.reduce((n, s) => n + s.points.length, 0) ?? 0;
 
+  // Explicit stage size (container is padded lg on each side; replay keeps
+  // the capture aspect, capped at REPLAY_MAX_HEIGHT) so the Svg gets real
+  // pixel dimensions instead of percentages against a flex-derived parent.
+  const stageW = Math.max(1, windowWidth - Spacing.lg * 2);
+  const stageH = drawing
+    ? Math.min(stageW / (Math.max(1, drawing.width) / Math.max(1, drawing.height)), REPLAY_MAX_HEIGHT)
+    : 0;
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.header}>
@@ -93,14 +102,12 @@ export default function DrawingDetailScreen() {
             <Text style={styles.kicker}>You drew</Text>
             <Text style={styles.title}>{displayPrompt(drawing)}</Text>
           </View>
-          <View
-            style={[
-              styles.stage,
-              {
-                aspectRatio: Math.max(1, drawing.width) / Math.max(1, drawing.height),
-              },
-            ]}>
-            <ReplayCanvas key={drawing.id} drawing={drawing} />
+          <View style={[styles.stage, { width: stageW, height: stageH }]}>
+            <ReplayCanvas
+              key={drawing.id}
+              drawing={drawing}
+              size={{ width: stageW, height: stageH }}
+            />
           </View>
           <View style={styles.meta}>
             <Meta label="Strokes" value={String(drawing.strokes.length)} />

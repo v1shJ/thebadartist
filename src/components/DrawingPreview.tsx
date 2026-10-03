@@ -8,14 +8,21 @@ import type { Drawing } from '@/types/drawing';
 type Props = {
   drawing: Drawing;
   ink?: string;
+  /**
+   * Explicit pixel size (square). Percentage Svg dimensions do not resolve
+   * reliably against aspect-ratio-derived parents on native — the Svg can
+   * fall back to viewBox-unit sizing and render enormously, showing only a
+   * cropped top-left corner. Pass a measured size wherever one is known.
+   */
+  size?: number;
 };
 
 /**
  * Static vector thumbnail — renders stored stroke data, never a
- * screenshot. Cropped to the artwork's bounding box so the drawing
- * fills the frame instead of floating in empty canvas.
+ * screenshot. Framed on the artwork (zoom-capped) so the drawing fills
+ * the tile without blowing up into an unrecognizable crop.
  */
-export function DrawingPreview({ drawing, ink = '#171717' }: Props) {
+export function DrawingPreview({ drawing, ink = '#171717', size }: Props) {
   const { vb, paths, strokeWidth } = useMemo(() => {
     const box = frameViewBox(drawing);
     return {
@@ -31,8 +38,8 @@ export function DrawingPreview({ drawing, ink = '#171717' }: Props) {
   return (
     <Svg
       viewBox={vb}
-      width="100%"
-      height="100%"
+      width={size ?? '100%'}
+      height={size ?? '100%'}
       preserveAspectRatio="xMidYMid meet"
       pointerEvents="none">
       {paths.map((p) => (

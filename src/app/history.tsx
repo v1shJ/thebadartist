@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { GalleryCell } from '@/components/GalleryCell';
+import { GalleryCell, useGalleryMetrics } from '@/components/GalleryCell';
 import { GameButton } from '@/components/GameButton';
 import { Palette, Spacing } from '@/constants/theme';
 import { drawingRepository } from '@/storage/drawingRepository';
@@ -21,6 +21,7 @@ function dayLabel(createdAt: number): string {
 
 export default function HistoryScreen() {
   const [drawings, setDrawings] = useState<Drawing[]>([]);
+  const { tileW } = useGalleryMetrics();
 
   useFocusEffect(
     useCallback(() => {
@@ -79,7 +80,7 @@ export default function HistoryScreen() {
                     key={d.id}
                     href={{ pathname: '/drawing/[id]', params: { id: d.id } }}
                     asChild>
-                    <Pressable style={({ pressed }) => [styles.tile, pressed && styles.pressed]}>
+                    <Pressable style={({ pressed }) => [{ width: tileW }, pressed && styles.pressed]}>
                       <GalleryCell drawing={d} />
                     </Pressable>
                   </Link>
@@ -115,7 +116,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
-  tile: { width: '47%', borderRadius: 14 },
   pressed: { opacity: 0.75 },
   empty: { paddingTop: Spacing.xxl, gap: Spacing.md },
   emptyTitle: { fontSize: 28, fontWeight: '900', color: Palette.ink },
