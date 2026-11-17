@@ -43,6 +43,10 @@ export type Prediction = {
   confidence: number;
 };
 
+export type ClassifierInput = {
+  strokes: Stroke[];
+};
+
 export interface DrawingClassifier {
-  predict(drawing: Drawing): Promise<Prediction[]>;
+  predict(input: ClassifierInput): Promise<Prediction[]>;
 }

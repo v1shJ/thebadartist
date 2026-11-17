@@ -5,10 +5,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DrawingCanvas } from '@/components/DrawingCanvas';
 import { GameButton } from '@/components/GameButton';
+import { PredictionPanel } from '@/components/PredictionPanel';
 import { Palette, Spacing } from '@/constants/theme';
 import { createDrawing } from '@/drawing/factory';
 import { challengeTitle, isPromptLabel, pickReplacement, type PromptLabel } from '@/game/prompts';
 import { useDrawingEngine } from '@/hooks/useDrawingEngine';
+import { usePredictions } from '@/hooks/usePredictions';
+import { getClassifier } from '@/ml';
 import { drawingRepository } from '@/storage/drawingRepository';
 
 export default function DrawScreen() {
@@ -18,11 +21,16 @@ export default function DrawScreen() {
   const [prompt, setPrompt] = useState<PromptLabel | null>(initial);
 
   const engine = useDrawingEngine();
+  const prediction = usePredictions(engine.strokes);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (initial === null) router.replace('/pick');
   }, [initial]);
+
+  useEffect(() => {
+    getClassifier().catch(() => {});
+  }, []);
 
   const swapPrompt = () => {
     if (!prompt) return;
@@ -105,6 +113,12 @@ export default function DrawScreen() {
           onCanvasLayout={(w, h) => engine.setCanvasSize({ width: w, height: h })}
         />
       </View>
+
+      <PredictionPanel
+        status={prediction.status}
+        predictions={prediction.predictions}
+        prompt={prompt}
+      />
 
       <View style={styles.bottomBar}>
         <GameButton
