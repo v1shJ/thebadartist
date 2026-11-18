@@ -1,11 +1,11 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as tf from '@tensorflow/tfjs-core';
 import '@tensorflow/tfjs-backend-cpu';
 import { loadLayersModel } from '@tensorflow/tfjs-layers';
-import { PROMPT_LABELS } from '../../src/game/prompts';
 import { rasterizeStrokes, GRID_SIZE } from '../../src/ml/preprocess/rasterize';
+import { MODEL_LABELS } from '../../src/ml/modelLabels';
 import type { Stroke } from '../../src/types/drawing';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
@@ -85,13 +85,32 @@ async function main() {
     .split(/\r?\n/)
     .map((s) => s.trim())
     .filter(Boolean);
-  const lower = classes.map((c) => c.toLowerCase());
-  const indices = PROMPT_LABELS.map((label) => {
-    const idx = lower.indexOf(label);
-    if (idx < 0) throw new Error(`missing class: ${label}`);
-    return idx;
+
+  // Validation uses whatever classes `ml:fetch` cached, not the app's full
+  // prompt vocabulary (which is all 345 model classes).
+  const cached = existsSync(CACHE_DIR)
+    ? readdirSync(CACHE_DIR)
+        .filter((file) => file.endsWith('.bin'))
+        .map((file) => file.slice(0, -'.bin'.length))
+        .filter((label) => existsSync(join(CACHE_DIR, `${label}.meta.json`)))
+        .sort()
+    : [];
+
+  if (cached.length === 0) {
+    console.log('no cached samples in .ml-cache — run `npm run ml:fetch` first');
+    return;
+  }
+
+  const modelIndex = new Map<string, number>(
+    MODEL_LABELS.map((label, index) => [label.toLowerCase(), index] as const),
+  );
+  const validation = cached.map((label) => {
+    const index = modelIndex.get(label.toLowerCase());
+    if (index == null) throw new Error(`cached class "${label}" is not in the model`);
+    return { label, index };
   });
-  console.log('classes:', classes.length, '| prompt mappings:', indices.length);
+  const indices = validation.map((entry) => entry.index);
+  console.log('classes:', classes.length, '| validation classes:', validation.length);
 
   const t0 = now();
   const model = await loadModel();
@@ -107,8 +126,8 @@ async function main() {
     let total = 0;
     const perClass: Record<string, string> = {};
 
-    for (let c = 0; c < PROMPT_LABELS.length; c += 1) {
-      const label = PROMPT_LABELS[c];
+    for (let c = 0; c < validation.length; c += 1) {
+      const { label, index } = validation[c];
       const { images, n } = loadBitmapBatch(label);
       const batch = polarity === 'ink-on-black' ? images : invertBatch(images);
       const probs = predict(model, batch, n);
@@ -120,7 +139,7 @@ async function main() {
         if (r.top3.some((s) => s.i === c)) cTop3 += 1;
         let best = 0;
         for (let k = 1; k < probs[i].length; k += 1) if (probs[i][k] > probs[i][best]) best = k;
-        if (best === indices[c]) fullTop1 += 1;
+        if (best === index) fullTop1 += 1;
       }
       restrictedTop1 += cTop1;
       restrictedTop3 += cTop3;
@@ -147,8 +166,8 @@ async function main() {
     let total = 0;
     let zeroInputs = 0;
     const tStart = now();
-    for (let c = 0; c < PROMPT_LABELS.length; c += 1) {
-      const label = PROMPT_LABELS[c];
+    for (let c = 0; c < validation.length; c += 1) {
+      const { label } = validation[c];
       let raw: RawDrawing[];
       try {
         raw = JSON.parse(readFileSync(join(CACHE_DIR, `${label}.raw.json`), 'utf8'));
@@ -190,7 +209,7 @@ async function main() {
     const probs = predict(model, images, strokes.length);
     return probs.map((p) => {
       const r = restrict(p, indices);
-      return r.top3.map((s) => `${PROMPT_LABELS[s.i]} ${(s.p * 100).toFixed(0)}%`).join(', ');
+      return r.top3.map((s) => `${validation[s.i].label} ${(s.p * 100).toFixed(0)}%`).join(', ');
     });
   })();
   console.log('sample cat raws ->', samplePred);

@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GameButton } from '@/components/GameButton';
 import { Palette, Spacing } from '@/constants/theme';
-import { pickThree, type PromptLabel } from '@/game/prompts';
+import { pickThree, promptDisplay, type PromptLabel } from '@/game/prompts';
 
 export default function PickScreen() {
   const [trio, setTrio] = useState(pickThree);
@@ -41,7 +41,7 @@ export default function PickScreen() {
               accessibilityLabel={`Draw ${prompt}`}>
               <View style={styles.optionRow}>
                 <Text style={styles.index}>0{i + 1}</Text>
-                <Text style={styles.word}>{prompt}</Text>
+                <Text style={styles.word}>{promptDisplay(prompt)}</Text>
                 <Text style={styles.arrow}>→</Text>
               </View>
             </GameButton>
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   index: { fontSize: 13, fontWeight: '800', color: Palette.accent, minWidth: 24 },
-  word: { fontSize: 26, fontWeight: '900', color: Palette.ink, flex: 1, textTransform: 'capitalize' },
+  word: { fontSize: 26, fontWeight: '900', color: Palette.ink, flex: 1 },
   arrow: { fontSize: 22, fontWeight: '800', color: Palette.ink },
   foot: { fontSize: 13, color: Palette.secondary, marginTop: 'auto', textAlign: 'center' },
 });

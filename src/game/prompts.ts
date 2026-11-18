@@ -1,35 +1,21 @@
-/** Initial Quick-Draw-style category pool (Phase 2 ML classes will grow from this). */
-export const PROMPT_LABELS = [
-  'cat',
-  'dog',
-  'car',
-  'bicycle',
-  'house',
-  'tree',
-  'flower',
-  'sun',
-  'fish',
-  'apple',
-  'bird',
-  'chair',
-  'cup',
-  'shoe',
-  'snake',
-  'spider',
-  'moon',
-  'star',
-  'key',
-  'umbrella',
-  'clock',
-  'mountain',
-  'pizza',
-  'guitar',
-] as const;
+import { MODEL_LABELS } from '../ml/modelLabels';
+
+/**
+ * The prompt vocabulary is the model's full class list (345 Quick, Draw!
+ * categories), so every prompt is guaranteed to be classifiable.
+ *
+ * These are the raw model labels (`hot_dog`, `The_Mona_Lisa`); they are
+ * stable ids used in routes and storage. Use `promptDisplay` for anything
+ * a player reads.
+ */
+export const PROMPT_LABELS = MODEL_LABELS;
 
 export type PromptLabel = (typeof PROMPT_LABELS)[number];
 
+const PROMPT_SET: ReadonlySet<string> = new Set<string>(PROMPT_LABELS);
+
 export function isPromptLabel(value: unknown): value is PromptLabel {
-  return typeof value === 'string' && (PROMPT_LABELS as readonly string[]).includes(value);
+  return typeof value === 'string' && PROMPT_SET.has(value);
 }
 
 /** Three distinct random prompts. */
@@ -53,8 +39,30 @@ function articleFor(word: string): 'a' | 'an' {
   return /^[aeiou]/i.test(word) ? 'an' : 'a';
 }
 
-/** "Draw a Cat" / "Draw an Apple" — the challenge title. */
+const SMALL_WORDS = new Set(['a', 'an', 'and', 'at', 'for', 'in', 'of', 'on', 'the', 'to']);
+
+/**
+ * Human-readable label: `hot_dog` → "Hot Dog",
+ * `The_Great_Wall_of_China` → "The Great Wall of China".
+ */
+export function promptDisplay(label: string): string {
+  return label
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .split(' ')
+    .map((word, index) => {
+      if (word.length === 0) return word;
+      if (index > 0 && SMALL_WORDS.has(word)) return word;
+      return word[0].toUpperCase() + word.slice(1);
+    })
+    .join(' ');
+}
+
+/** "Draw a Hot Dog" / "Draw the Mona Lisa" — the challenge title. */
 export function challengeTitle(prompt: string): string {
-  const word = prompt.charAt(0).toUpperCase() + prompt.slice(1);
-  return `Draw ${articleFor(prompt)} ${word}`;
+  const display = promptDisplay(prompt);
+  if (display.startsWith('The ')) {
+    return `Draw ${display.replace(/^The /, 'the ')}`;
+  }
+  return `Draw ${articleFor(prompt)} ${display}`;
 }

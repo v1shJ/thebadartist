@@ -2,11 +2,12 @@ import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { DrawingPreview } from '@/components/DrawingPreview';
 import { Palette, Spacing } from '@/constants/theme';
+import { promptDisplay } from '@/game/prompts';
 import type { Drawing } from '@/types/drawing';
 
 function displayPrompt(drawing: Drawing): string {
   if (!drawing.prompt) return 'Free sketch';
-  return drawing.prompt.charAt(0).toUpperCase() + drawing.prompt.slice(1);
+  return promptDisplay(drawing.prompt);
 }
 
 /**

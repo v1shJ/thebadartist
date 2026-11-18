@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ReplayCanvas } from '@/components/ReplayCanvas';
 import { Palette, Spacing } from '@/constants/theme';
+import { promptDisplay } from '@/game/prompts';
 import { drawingRepository } from '@/storage/drawingRepository';
 import type { Drawing } from '@/types/drawing';
 
@@ -23,7 +24,7 @@ function formatDate(createdAt: number): string {
 
 function displayPrompt(drawing: Drawing): string {
   if (!drawing.prompt) return 'Free sketch';
-  return `A ${drawing.prompt.charAt(0).toUpperCase() + drawing.prompt.slice(1)}`;
+  return promptDisplay(drawing.prompt);
 }
 
 const REPLAY_MAX_HEIGHT = 560;

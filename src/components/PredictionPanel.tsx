@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View, type DimensionValue } from 'react-native';
 
 import { Palette, Spacing } from '@/constants/theme';
+import { promptDisplay } from '@/game/prompts';
 import type { PredictionStatus } from '@/hooks/usePredictions';
 import type { Prediction } from '@/types/drawing';
 
@@ -9,10 +10,6 @@ type Props = {
   predictions: Prediction[];
   prompt: string;
 };
-
-function capitalize(value: string) {
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
 
 function barWidth(confidence: number): DimensionValue {
   const percent = Math.max(2, Math.min(100, Math.round(confidence * 100)));
@@ -44,7 +41,7 @@ export function PredictionPanel({ status, predictions, prompt }: Props) {
               <View style={styles.body}>
                 <View style={styles.labelRow}>
                   <Text style={[styles.label, isTarget && styles.labelTarget]} numberOfLines={1}>
-                    {capitalize(prediction.label)}
+                    {promptDisplay(prediction.label)}
                   </Text>
                   <Text style={styles.value}>{Math.round(prediction.confidence * 100)}%</Text>
                 </View>
