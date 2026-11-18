@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
@@ -34,6 +34,8 @@ export function DrawingCanvas({
   onCancel,
   onCanvasLayout,
 }: Props) {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
   const committed = useMemo(
     () =>
       strokes.map((s) => ({
@@ -42,6 +44,8 @@ export function DrawingCanvas({
       })),
     [strokes],
   );
+
+  const measured = size.width > 0 && size.height > 0;
 
   return (
     <View
@@ -57,9 +61,16 @@ export function DrawingCanvas({
       onResponderRelease={onEnd}
       onResponderTerminate={onCancel ?? onEnd}
       onLayout={(e) => {
-        onCanvasLayout?.(e.nativeEvent.layout.width, e.nativeEvent.layout.height);
+        const { width, height } = e.nativeEvent.layout;
+        setSize({ width, height });
+        onCanvasLayout?.(width, height);
       }}>
-      <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Svg
+        width={measured ? size.width : '100%'}
+        height={measured ? size.height : '100%'}
+        viewBox={measured ? `0 0 ${size.width} ${size.height}` : undefined}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none">
         {committed.map((p) => (
           <Path
             key={p.id}

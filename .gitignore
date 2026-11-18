@@ -3,6 +3,11 @@
 # dependencies
 node_modules/
 
+#agents typeshi
+AGENTS*.md
+antislop.md
+DESIGN.md
+
 # Expo
 .expo/
 dist/
